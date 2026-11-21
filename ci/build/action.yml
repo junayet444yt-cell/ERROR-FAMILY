@@ -1,0 +1,38 @@
+name: Build Family Shield apk
+description: Builds the Android apk and puts it into the release
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "17"
+
+    - uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: "8.9"
+
+    - name: Accept Android licenses
+      shell: bash
+      run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+    - name: Build apk
+      shell: bash
+      run: gradle assembleDebug --no-daemon --console=plain
+
+    - name: Name the file
+      shell: bash
+      run: cp app/build/outputs/apk/debug/app-debug.apk FAMILY-SHIELD.apk
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: family-shield-apk
+        path: FAMILY-SHIELD.apk
+
+    - name: Put the apk into the release
+      shell: bash
+      run: |
+        gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
+        gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Family Shield $TAG" --notes "Download FAMILY-SHIELD.apk, install it, open it and press Start."
+        gh release upload "$TAG" FAMILY-SHIELD.apk --clobber --repo "$GITHUB_REPOSITORY"
